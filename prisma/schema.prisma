@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Tabela de usuários para autenticação
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  full_name String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relacionamentos
+  profile     Profile?
+  userRoles   UserRole[]
+  professional Professional?
+
+  @@map("users")
+}
+
+// Perfil do usuário (informações adicionais)
+model Profile {
+  id          String   @id @default(cuid())
+  user_id     String   @unique
+  full_name   String
+  phone       String?
+  avatar_url  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relacionamento
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// Roles de usuário (perfis de acesso)
+model UserRole {
+  id     String @id @default(cuid())
+  user_id String
+  role   AppRole
+
+  // Relacionamento
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role])
+  @@map("user_roles")
+}
+
+// Enum para roles do sistema
+enum AppRole {
+  admin
+  profissional
+  recepcionista
+}
+
+// Tabela de pacientes
+model Patient {
+  id               String   @id @default(cuid())
+  full_name        String
+  cpf              String?  @unique
+  date_of_birth    DateTime?
+  gender           String?
+  phone            String?
+  email            String?
+  address          String?
+  insurance        String?
+  insurance_number String?
+  notes            String?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // Relacionamentos
+  appointments Appointment[]
+  sessions     Session[]
+
+  @@map("patients")
+}
+
+// Tabela de profissionais de saúde
+model Professional {
+  id         String   @id @default(cuid())
+  full_name  String
+  specialty  String
+  crm        String?  @unique
+  phone      String?
+  email      String?
+  active     Boolean  @default(true)
+  user_id    String?  @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relacionamentos
+  user         User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  appointments Appointment[]
+  sessions     Session[]
+
+  @@map("professionals")
+}
+
+// Tabela de agendamentos
+model Appointment {
+  id             String    @id @default(cuid())
+  patient_id     String
+  professional_id String
+  date           DateTime
+  time_start     String    // HH:mm format
+  time_end       String?   // HH:mm format
+  type           String    // consulta, retorno, exame, procedimento
+  status         String    // agendado, confirmado, cancelado, concluido
+  notes          String?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  // Relacionamentos
+  patient     Patient     @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professional_id], references: [id], onDelete: Cascade)
+  sessions    Session[]
+
+  @@map("appointments")
+}
+
+// Tabela de sessões/clínicas realizadas
+model Session {
+  id               String    @id @default(cuid())
+  appointment_id   String?   @unique
+  patient_id       String
+  professional_id  String
+  date             DateTime
+  duration_minutes Int?
+  clinical_notes   String?
+  status           String    // realizada, cancelada, faltou
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  // Relacionamentos
+  appointment Appointment? @relation(fields: [appointment_id], references: [id], onDelete: SetNull)
+  patient     Patient     @relation(fields: [patient_id], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professional_id], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// Tabela de configurações do sistema (opcional)
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String?
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// Tabela de logs/auditoria (opcional)
+model AuditLog {
+  id         String   @id @default(cuid())
+  user_id    String?
+  action     String   // create, update, delete
+  table_name String
+  record_id  String?
+  old_values Json?    // valores antigos
+  new_values Json?    // valores novos
+  created_at DateTime @default(now())
+
+  @@map("audit_logs")
+}
