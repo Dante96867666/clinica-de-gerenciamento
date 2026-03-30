@@ -19,7 +19,7 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Agendamento", url: "/agendamento", icon: Calendar },
   { title: "Pacientes", url: "/pacientes", icon: Users },
-  { title: "Sessões", url: "/sessoes", icon: ClipboardList },
+  { title: "Histórico de Sessões", url: "/sessoes", icon: ClipboardList },
   { title: "Profissionais", url: "/profissionais", icon: UserCog },
 ];
 

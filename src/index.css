@@ -87,8 +87,112 @@
     @apply border-border;
   }
 
+  html {
+    font-size: var(--base-font-size, 16px);
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  /* High contrast mode - Acessível e visualmente coerente */
+  .high-contrast {
+    /* Fundo levemente mais suave que preto puro */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 100%;
+    
+    /* Cards com boa separação */
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+    
+    /* Amarelo/dourado vibrante para primário (padrão WCAG) */
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    
+    /* Cinza escuro para elementos secundários */
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 85%;
+    
+    --accent: 48 100% 25%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Vermelho vivo para ações destrutivas */
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Bordas brancas visíveis */
+    --border: 0 0% 60%;
+    --input: 0 0% 60%;
+    --ring: 48 100% 50%;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 40%;
+    --sidebar-ring: 48 100% 50%;
+    
+    /* Status colors - mais vibrantes */
+    --success: 120 100% 45%;
+    --success-foreground: 0 0% 0%;
+    --warning: 48 100% 50%;
+    --warning-foreground: 0 0% 0%;
+    
+    /* Estilos adicionais de acessibilidade */
+    --radius: 0.25rem;
+  }
+
+  .high-contrast * {
+    outline-offset: 2px !important;
+  }
+
+  .high-contrast :focus-visible {
+    outline: 3px solid hsl(var(--ring)) !important;
+    outline-offset: 2px !important;
+  }
+
+  .high-contrast .dark {
+    /* Mantém as mesmas cores no modo dark do high contrast */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 85%;
+    --accent: 48 100% 25%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 60%;
+    --input: 0 0% 60%;
+    --ring: 48 100% 50%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 40%;
+    --sidebar-ring: 48 100% 50%;
+    --success: 120 100% 45%;
+    --success-foreground: 0 0% 0%;
+    --warning: 48 100% 50%;
+    --warning-foreground: 0 0% 0%;
   }
 }

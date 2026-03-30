@@ -204,13 +204,24 @@ app.post('/api/professionals', authenticateToken, async (req, res) => {
 
 app.put('/api/professionals/:id', authenticateToken, async (req, res) => {
   try {
+    // Remover campos que não devem ser atualizados
+    const { id, created_at, updated_at, ...data } = req.body;
+    
+    console.log('=== DEBUG UPDATE PROFESSIONAL ===');
+    console.log('ID:', req.params.id);
+    console.log('Dados processados:', data);
+    
     const professional = await prisma.professional.update({
       where: { id: req.params.id },
-      data: req.body
+      data
     });
+    console.log('Profissional atualizado com sucesso');
     res.json(professional);
   } catch (error) {
-    res.status(400).json({ message: 'Erro ao atualizar profissional' });
+    console.error('=== ERRO AO ATUALIZAR PROFISSIONAL ===');
+    console.error('Mensagem:', error.message);
+    console.error('Código:', error.code);
+    res.status(400).json({ message: 'Erro ao atualizar profissional', error: error.message, code: error.code });
   }
 });
 
@@ -236,7 +247,13 @@ app.get('/api/appointments', authenticateToken, async (req, res) => {
       },
       include: { patient: true, professional: true }
     });
-    res.json(appointments);
+    const appointmentsWithNames = appointments.map(a => ({
+      ...a,
+      date: a.date.toISOString().split('T')[0],
+      patient_name: a.patient?.full_name ?? null,
+      professional_name: a.professional?.full_name ?? null,
+    }));
+    res.json(appointmentsWithNames);
   } catch (error) {
     res.status(500).json({ message: 'Erro ao buscar agendamentos' });
   }
@@ -287,13 +304,30 @@ app.post('/api/appointments', authenticateToken, async (req, res) => {
 
 app.put('/api/appointments/:id', authenticateToken, async (req, res) => {
   try {
+    // Remover campos que não devem ser atualizados
+    const { id, created_at, updated_at, patient, professional, patient_name, professional_name, ...rawData } = req.body;
+    
+    // Converter date para Date se existir
+    const data = { ...rawData };
+    if (data.date) {
+      data.date = new Date(data.date);
+    }
+    
+    console.log('=== DEBUG UPDATE APPOINTMENT ===');
+    console.log('ID:', req.params.id);
+    console.log('Dados processados:', data);
+    
     const appointment = await prisma.appointment.update({
       where: { id: req.params.id },
-      data: req.body
+      data
     });
+    console.log('Agendamento atualizado com sucesso');
     res.json(appointment);
   } catch (error) {
-    res.status(400).json({ message: 'Erro ao atualizar agendamento' });
+    console.error('=== ERRO AO ATUALIZAR AGENDAMENTO ===');
+    console.error('Mensagem:', error.message);
+    console.error('Código:', error.code);
+    res.status(400).json({ message: 'Erro ao atualizar agendamento', error: error.message, code: error.code });
   }
 });
 
@@ -364,7 +398,7 @@ app.delete('/api/sessions/:id', authenticateToken, async (req, res) => {
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ message: 'Erro ao deletar sessão' });
-  }
+  }                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
 });
 
 // ========== DASHBOARD ==========

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { sessionsApi, patientsApi, professionalsApi } from "@/services/api";
+import { appointmentsApi, patientsApi, professionalsApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,25 +9,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search } from "lucide-react";
 import { format } from "date-fns";
 
-type Session = {
+type Appointment = {
   id: string;
   patient_id: string;
   professional_id: string;
   date: string;
-  duration_minutes: number | null;
-  clinical_notes: string | null;
+  time_start: string;
+  time_end: string | null;
+  type: string;
   status: string;
+  notes: string | null;
   patient_name?: string;
   professional_name?: string;
 };
 
-const emptyForm = { patient_id: "", professional_id: "", date: format(new Date(), "yyyy-MM-dd"), duration_minutes: "", clinical_notes: "", status: "realizada" };
+const emptyForm = { patient_id: "", professional_id: "", date: format(new Date(), "yyyy-MM-dd"), time_start: "", time_end: "", type: "consulta", status: "agendado", notes: "" };
 
 export default function Sessions() {
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [patients, setPatients] = useState<{ id: string; full_name: string }[]>([]);
   const [professionals, setProfessionals] = useState<{ id: string; full_name: string }[]>([]);
   const [open, setOpen] = useState(false);
@@ -37,12 +40,12 @@ export default function Sessions() {
 
   const fetchAll = async () => {
     try {
-      const [sessRes, patRes, profRes] = await Promise.all([
-        sessionsApi.list(),
+      const [apptRes, patRes, profRes] = await Promise.all([
+        appointmentsApi.list(),
         patientsApi.list(),
         professionalsApi.listActive(),
       ]);
-      setSessions(sessRes);
+      setAppointments(apptRes);
       setPatients(patRes);
       setProfessionals(profRes);
     } catch { }
@@ -60,18 +63,20 @@ export default function Sessions() {
       patient_id: form.patient_id,
       professional_id: form.professional_id,
       date: form.date,
-      duration_minutes: form.duration_minutes ? parseInt(form.duration_minutes) : null,
-      clinical_notes: form.clinical_notes || null,
+      time_start: form.time_start,
+      time_end: form.time_end || null,
+      type: form.type,
       status: form.status,
+      notes: form.notes || null,
     };
 
     try {
       if (editing) {
-        await sessionsApi.update(editing, payload);
-        toast({ title: "Sessão atualizada!" });
+        await appointmentsApi.update(editing, payload);
+        toast({ title: "Agendamento atualizado!" });
       } else {
-        await sessionsApi.create(payload);
-        toast({ title: "Sessão registrada!" });
+        await appointmentsApi.create(payload);
+        toast({ title: "Agendamento criado!" });
       }
       setOpen(false);
       setEditing(null);
@@ -84,32 +89,38 @@ export default function Sessions() {
 
   const handleDelete = async (id: string) => {
     try {
-      await sessionsApi.delete(id);
-      toast({ title: "Sessão excluída!" });
+      await appointmentsApi.delete(id);
+      toast({ title: "Agendamento excluído!" });
       fetchAll();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
   };
 
-  const statusLabel: Record<string, string> = { realizada: "Realizada", cancelada: "Cancelada", faltou: "Faltou" };
+  const filteredAppointments = appointments.filter((a) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (a.patient_name?.toLowerCase().includes(term) ?? false) ||
+      (a.professional_name?.toLowerCase().includes(term) ?? false)
+    );
+  });
+
+  const statusLabel: Record<string, string> = { agendado: "Agendado", confirmado: "Confirmado", cancelado: "Cancelado", concluido: "Concluído" };
   const statusColor: Record<string, string> = {
-    realizada: "bg-success/10 text-success",
-    cancelada: "bg-destructive/10 text-destructive",
-    faltou: "bg-warning/10 text-warning",
+    agendado: "bg-primary/10 text-primary",
+    confirmado: "bg-success/10 text-success",
+    cancelado: "bg-destructive/10 text-destructive",
+    concluido: "bg-muted text-muted-foreground",
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Controle de Sessões</h1>
+        <h1 className="text-3xl font-bold">Histórico de Sessões</h1>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditing(null); setForm(emptyForm); } }}>
-          <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />Nova Sessão</Button>
-          </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editing ? "Editar Sessão" : "Nova Sessão"}</DialogTitle>
+              <DialogTitle>{editing ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2">
@@ -132,8 +143,26 @@ export default function Sessions() {
                   <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Duração (min)</Label>
-                  <Input type="number" value={form.duration_minutes} onChange={(e) => setForm({ ...form, duration_minutes: e.target.value })} placeholder="30" />
+                  <Label>Tipo</Label>
+                  <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="consulta">Consulta</SelectItem>
+                      <SelectItem value="retorno">Retorno</SelectItem>
+                      <SelectItem value="exame">Exame</SelectItem>
+                      <SelectItem value="procedimento">Procedimento</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Hora Início *</Label>
+                  <Input type="time" value={form.time_start} onChange={(e) => setForm({ ...form, time_start: e.target.value })} />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Hora Fim</Label>
+                  <Input type="time" value={form.time_end} onChange={(e) => setForm({ ...form, time_end: e.target.value })} />
                 </div>
               </div>
               <div className="grid gap-2">
@@ -141,20 +170,30 @@ export default function Sessions() {
                 <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="realizada">Realizada</SelectItem>
-                    <SelectItem value="cancelada">Cancelada</SelectItem>
-                    <SelectItem value="faltou">Faltou</SelectItem>
+                    <SelectItem value="agendado">Agendado</SelectItem>
+                    <SelectItem value="confirmado">Confirmado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                    <SelectItem value="concluido">Concluído</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>Anotações Clínicas</Label>
-                <Textarea value={form.clinical_notes} onChange={(e) => setForm({ ...form, clinical_notes: e.target.value })} rows={4} />
+                <Label>Observações</Label>
+                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={4} />
               </div>
-              <Button onClick={handleSave}>{editing ? "Atualizar" : "Registrar"}</Button>
+              <Button onClick={handleSave}>{editing ? "Atualizar" : "Agendar"}</Button>
             </div>
           </DialogContent>
         </Dialog>
+        <div className="relative max-w-md w-96">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por paciente ou profissional..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       <Card>
@@ -163,46 +202,54 @@ export default function Sessions() {
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
+                <TableHead>Hora</TableHead>
                 <TableHead>Paciente</TableHead>
                 <TableHead>Profissional</TableHead>
-                <TableHead>Duração</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-24">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Nenhuma sessão encontrada.</TableCell></TableRow>
+              {filteredAppointments.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground">Nenhum agendamento encontrado.</TableCell></TableRow>
               ) : (
-                sessions.map((s) => (
-                  <TableRow key={s.id}>
+                filteredAppointments.map((a) => (
+                  <TableRow key={a.id}>
                     <TableCell>{(() => {
-                      if (!s.date) return "—";
-                      // Handle ISO format (2024-03-20T00:00:00.000Z) or date-only format (2024-03-20)
-                      const dateStr = s.date.includes('T') ? s.date.split('T')[0] : s.date;
+                      if (!a.date) return "—";
+                      const dateStr = a.date.includes('T') ? a.date.split('T')[0] : a.date;
                       const d = new Date(dateStr + "T00:00:00");
                       return isNaN(d.getTime()) ? "—" : format(d, "dd/MM/yyyy");
                     })()}</TableCell>
-                    <TableCell className="font-medium">{s.patient_name}</TableCell>
-                    <TableCell>{s.professional_name}</TableCell>
-                    <TableCell>{s.duration_minutes ? `${s.duration_minutes} min` : "—"}</TableCell>
+                    <TableCell>{a.time_start?.slice(0, 5) ?? "—"}</TableCell>
+                    <TableCell className="font-medium">{a.patient_name}</TableCell>
+                    <TableCell>{a.professional_name}</TableCell>
                     <TableCell>
-                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColor[s.status] ?? ""}`}>
-                        {statusLabel[s.status] ?? s.status}
+                      <span className="text-xs">
+                        {a.type === "consulta" && "Consulta"}
+                        {a.type === "retorno" && "Retorno"}
+                        {a.type === "exame" && "Exame"}
+                        {a.type === "procedimento" && "Procedimento"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColor[a.status] ?? ""}`}>
+                        {statusLabel[a.status] ?? a.status}
                       </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button size="icon" variant="ghost" onClick={() => {
-                          setEditing(s.id);
+                          setEditing(a.id);
                           setForm({
-                            patient_id: s.patient_id, professional_id: s.professional_id,
-                            date: s.date, duration_minutes: s.duration_minutes?.toString() ?? "",
-                            clinical_notes: s.clinical_notes ?? "", status: s.status,
+                            patient_id: a.patient_id, professional_id: a.professional_id,
+                            date: a.date, time_start: a.time_start, time_end: a.time_end ?? "",
+                            type: a.type, notes: a.notes ?? "", status: a.status,
                           });
                           setOpen(true);
                         }}><Pencil className="h-4 w-4" /></Button>
-                        <Button size="icon" variant="ghost" onClick={() => handleDelete(s.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => handleDelete(a.id)} className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
